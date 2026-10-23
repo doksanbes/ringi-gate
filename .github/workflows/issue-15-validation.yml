@@ -44,7 +44,8 @@ jobs:
         run: npm ci
 
       - name: Targeted doctor and missing-profile run tests
-        run: node --test --test-name-pattern='ringi doctor|ringi run: profile errors' scripts/ringi-cli.test.mjs
+        run: >-
+          node --test --test-name-pattern='ringi doctor|ringi run: profile errors' scripts/ringi-cli.test.mjs
 
       - name: Full test suite
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
