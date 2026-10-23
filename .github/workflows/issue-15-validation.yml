@@ -1,0 +1,59 @@
+name: Validate Issue 15 on Linux
+
+on:
+  push:
+    branches: [fix/doctor-missing-profile]
+    paths: [.github/workflows/issue-15-validation.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 786715b3a6f027868d7eaf20e29f1333f72dcdb8
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+
+      - name: Record environment and tested commit
+        run: |
+          git rev-parse HEAD
+          node --version
+          npm --version
+          git --version
+          uname -a
+
+      - name: Prepare pinned pnpm
+        run: |
+          if ! command -v corepack >/dev/null; then
+            npm install --global corepack@0.34.6
+          fi
+          corepack enable pnpm
+          corepack install -g --cache-only pnpm@11.20.0
+
+      - name: Clean dependency installation
+        id: install
+        run: npm ci
+
+      - name: Targeted doctor and missing-profile run tests
+        run: node --test --test-name-pattern='ringi doctor|ringi run: profile errors' scripts/ringi-cli.test.mjs
+
+      - name: Full test suite
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm test
+
+      - name: Validate examples
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: node --test examples/validate-examples.test.mjs
+
+      - name: Check committed diff whitespace
+        if: ${{ !cancelled() }}
+        run: git diff --check HEAD^ HEAD
